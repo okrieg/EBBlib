@@ -29,11 +29,8 @@
 #include <lrt/assert.h>
 #include <lrt/string.h>
 #include <l0/lrt/trans.h>
-#include <l0/types.h>
-#include <l0/sys/trans.h>
-#include <l0/sys/trans-def.h>
-
-// JA FIXME: Need to decided who really uses lrt_pic_myid versus myEL()
+#include <l0/lrt/trans-def.h>
+#include <sync/barrier.h>
 
 EBBGTrans * const ALLOCATED = (EBBGTrans *)-1;
 
@@ -45,14 +42,6 @@ EBBGTrans * const ALLOCATED = (EBBGTrans *)-1;
 int sysTransValidate()
 {
   int cores = lrt_num_event_loc();
-
-#if 0
-  uintptr_t psize = LRT_TRANS_TBLSIZE / cores;
-  // FIXME: now that we allocaate based on number of cores, rather than
-  // MAX... 
-  // ensure that tables divide evenly among max ELs
-  if (psize * cores != LRT_TRANS_TBLSIZE) return 0;
-#endif
 
   // there should be at least one page of translations per el
   if ((LRT_TRANS_TBLSIZE / cores) < LRT_TRANS_PAGESIZE) return 0;
@@ -73,7 +62,8 @@ static inline uintptr_t
 mygmem_size(void)
 {
   // round up so aligned on sizeof(EBBGTrans)
-  return ((LRT_TRANS_TBLSIZE / lrt_num_event_loc())/sizeof(EBBGTrans))*sizeof(EBBGTrans);
+  return ((LRT_TRANS_TBLSIZE / lrt_num_event_loc())/
+          sizeof(EBBGTrans))*sizeof(EBBGTrans);
 }
 
 
@@ -228,11 +218,8 @@ TransEBBIdBind(EBBId id, EBBMissFunc mf, EBBMissArg arg) {
 }
 
 
-// at this point translation hardware has been initialized
-// software must setup the memory and any if its basic
-// managment up
 void
-trans_init(void)
+lrt_trans_init(void)
 {
   LRT_Assert(sysTransValidate());
   // maximum bits in corebv in EBBTransStruct
@@ -240,4 +227,5 @@ trans_init(void)
 
   bzero((void *)mygmem(), mygmem_size());
   initLTable();
+
 }
